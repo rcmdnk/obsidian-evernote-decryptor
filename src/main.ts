@@ -31,7 +31,7 @@ export default class CustomContextMenuPlugin extends Plugin {
 				editor.replaceSelection(decryptedText);
 			} catch (error) {
 				new Notice('❌ Failed to decrypt.', 10000);
-				console.error(error);
+				new Notice(error);
 			}
 		});
 
