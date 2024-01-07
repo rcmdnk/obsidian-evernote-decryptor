@@ -1,6 +1,6 @@
 # Obsidian Evernote Decryptor
 
-Decrypt encrypted data imported from Evernote.
+Manage encrypted data imported from Evernote.
 
 ## Usage
 
