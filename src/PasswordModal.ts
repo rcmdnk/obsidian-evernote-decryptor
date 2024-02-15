@@ -20,6 +20,7 @@ export class PasswordModal extends Modal {
 			this.passwordField.type = 'password';
 			this.passwordField.addEventListener('keypress', (e: KeyboardEvent) => {
 				if (e.key === 'Enter') {
+					e.preventDefault();
 					this.onPasswordSubmit();
 				}
 			});
