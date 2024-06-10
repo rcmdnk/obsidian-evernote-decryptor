@@ -1,0 +1,67 @@
+import { App, editorLivePreviewField } from 'obsidian';
+import { EditorView, ViewUpdate, Decoration, DecorationSet, ViewPlugin, WidgetType } from '@codemirror/view';
+import { RangeSetBuilder } from '@codemirror/state';
+import { syntaxTree } from '@codemirror/language';
+import { makeSecretButton } from './CryptoUtils';
+
+class SecretButtonWidget extends WidgetType {
+  constructor(public app: App, public encryptedText: string) {
+    super();
+  }
+
+  toDOM(view: EditorView) {
+    return makeSecretButton(this.app, this.encryptedText);
+  }
+}
+
+export const evernoteDecryptor = (app: App) => ViewPlugin.fromClass(class {
+  decorations: DecorationSet;
+
+  constructor(view: EditorView) {
+    this.decorations = this.createDecorations(view);
+  }
+
+  update(update: ViewUpdate) {
+    if (!update.state.field(editorLivePreviewField)) {
+      this.decorations = Decoration.none;
+      return;
+    }
+    if (update.docChanged || update.viewportChanged || update.selectionSet) {
+      this.decorations = this.createDecorations(update.view);
+    }
+  }
+
+  private createDecorations(view: EditorView): DecorationSet {
+    if (!view.state.field(editorLivePreviewField)) return Decoration.none;
+
+    const builder = new RangeSetBuilder<Decoration>();
+    const selection = view.state.selection;
+
+    for (const { from, to } of view.visibleRanges) {
+      syntaxTree(view.state).iterate({
+        from,
+        to,
+        enter(node: Node) {
+          if (node.type.name.startsWith("inline-code")) {
+            const value = view.state.doc.sliceString(node.from, node.to)
+            if(value.startsWith('evernote_secret ')){
+              if(!selection.ranges.some(range => range.from <= node.to + 1 && range.to >= node.from - 1)){
+                builder.add(
+                  node.from,
+                  node.to,
+                  Decoration.replace({
+                    widget: new SecretButtonWidget(app, value)
+                  })
+                );
+              }
+            }
+          }
+        },
+      });
+    }
+    return builder.finish();
+  }
+}, {
+  decorations: v => v.decorations,
+});
+

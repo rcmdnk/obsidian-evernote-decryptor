@@ -1,47 +1,47 @@
-import { Modal, Setting, App } from 'obsidian';
+import { App, Modal, Setting } from 'obsidian';
 
 export class PasswordModal extends Modal {
-	private onSubmit: (password: string) => void;
-	private passwordField: HTMLInputElement;
+  private onSubmit: (password: string) => void;
+  private passwordField: HTMLInputElement;
 
-	constructor(app: App, onSubmit: (password: string) => void) {
-		super(app);
-		this.onSubmit = onSubmit;
-	}
+  constructor(app: App, onSubmit: (password: string) => void) {
+    super(app);
+    this.onSubmit = onSubmit;
+  }
 
-	onOpen() {
-		const { contentEl } = this;
+  onOpen() {
+    const { contentEl } = this;
 
-		contentEl.createEl('h2', { text: 'Enter Evernote encryption password.' });
-		new Setting(contentEl)
-		.setName('Password')
-		.addText(text => {
-			this.passwordField = text.inputEl;
-			this.passwordField.type = 'password';
-			this.passwordField.addEventListener('keypress', (e: KeyboardEvent) => {
-				if (e.key === 'Enter') {
-					e.preventDefault();
-					this.onPasswordSubmit();
-				}
-			});
-		});
+    contentEl.createEl('h2', { text: 'Enter Evernote encryption password.' });
+    new Setting(contentEl)
+      .setName('Password')
+      .addText(text => {
+        this.passwordField = text.inputEl;
+        this.passwordField.type = 'password';
+        this.passwordField.addEventListener('keypress', (e: KeyboardEvent) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            this.onPasswordSubmit();
+          }
+        });
+      });
 
-		new Setting(contentEl)
-		.addButton(btn => btn
-				.setButtonText('Submit')
-				.setCta()
-				.onClick(() => {
-					this.onPasswordSubmit();
-				}));
-	}
+    new Setting(contentEl)
+      .addButton(btn => btn
+        .setButtonText('Submit')
+        .setCta()
+        .onClick(() => {
+          this.onPasswordSubmit();
+        }));
+  }
 
-	onClose() {
-		const { contentEl } = this;
-		contentEl.empty();
-	}
+  onClose() {
+    const { contentEl } = this;
+    contentEl.empty();
+  }
 
-	private onPasswordSubmit() {
-		this.onSubmit(this.passwordField.value);
-		this.close();
-	}
+  private onPasswordSubmit() {
+    this.onSubmit(this.passwordField.value);
+    this.close();
+  }
 }
