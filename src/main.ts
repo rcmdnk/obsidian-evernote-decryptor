@@ -1,6 +1,9 @@
 import { Plugin, Editor, Menu } from 'obsidian';
 import { evernoteDecryptor } from './EvernoteDecryptorPlugin';
 import { makeSecretButton, editorDecrypt  } from './CryptoUtils';
+import { makeViewPlugin  } from './ViewPlugin';
+
+const PREFIX = 'evernote_secret ';
 
 export default class EvernoteDecryptorPlugin extends Plugin {
   onload() {
@@ -30,8 +33,8 @@ export default class EvernoteDecryptorPlugin extends Plugin {
     this.registerMarkdownPostProcessor((el, ctx) => {
       const codeBlocks = el.querySelectorAll('code');
       codeBlocks.forEach((codeBlock) => {
-        if (codeBlock.textContent.startsWith('evernote_secret ')) {
-          const encryptedText = codeBlock.textContent;
+        if (codeBlock.textContent.startsWith(PREFIX)) {
+          const encryptedText = codeBlock.textContent.slice(PREFIX.length);
           codeBlock.style.display = 'none';
 
           const button = makeSecretButton(this.app, encryptedText);
@@ -40,7 +43,7 @@ export default class EvernoteDecryptorPlugin extends Plugin {
       });
     });
 
-    this.registerEditorExtension(evernoteDecryptor(this.app));
+    this.registerEditorExtension(makeViewPlugin(this.app, PREFIX));
 
     console.log('EvernoteDecryptor plugin loaded');
   }

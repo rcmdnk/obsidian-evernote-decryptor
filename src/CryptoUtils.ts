@@ -22,7 +22,7 @@ function compareDigests(digest1: Buffer, digest2: Buffer): boolean {
   return digest1.length === digest2.length && timingSafeEqual(digest1, digest2);
 }
 
-export function decryptText(text: string, password: string): string {
+function decrypt(text: string, password: string): string {
   const binaryText = Uint8Array.from(atob(text), c => c.charCodeAt(0));
 
   let offset = RESERVED_LENGTH;
@@ -51,7 +51,7 @@ export function decryptText(text: string, password: string): string {
   return plaintext.replace(/<div>/g, '').replace(/<\/div>/g, '');
 }
 
-export function decrypt(app: App, encryptedText: string) {
+function decryptWrapper(app: App, encryptedText: string) {
   const passwordModal = new PasswordModal(app, password => {
     if (password.trim() === '') {
       new Notice('⚠️  Please enter a password.', 10000);
@@ -59,7 +59,7 @@ export function decrypt(app: App, encryptedText: string) {
     }
 
     try {
-      const decryptedText = decryptText(encryptedText.replace('evernote_secret ', ''), password);
+      const decryptedText = decrypt(encryptedText, password);
       const decryptedTextModal = new DecryptedTextModal(app, decryptedText);
       decryptedTextModal.open();
     } catch (error) {
@@ -70,9 +70,9 @@ export function decrypt(app: App, encryptedText: string) {
   passwordModal.open();
 }
 
-export function onclickDecrypt(app: App, encryptedText: string, event: MouseEvent) {
+function onclickDecrypt(app: App, encryptedText: string, event: MouseEvent) {
   event.preventDefault();
-  decrypt(app, encryptedText);
+  decryptWrapper(app, encryptedText);
 }
 
 export function makeSecretButton(app: App, encryptedText: string) {
@@ -85,5 +85,5 @@ export function makeSecretButton(app: App, encryptedText: string) {
 
 export function editorDecrypt(app: App, editor: Editor): void {
     const selectedText = editor.getSelection();
-    decrypt(app, selectedText);
+    decryptWrapper(app, selectedText);
 }

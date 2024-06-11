@@ -1,20 +1,10 @@
 import { App, editorLivePreviewField } from 'obsidian';
-import { EditorView, ViewUpdate, Decoration, DecorationSet, ViewPlugin, WidgetType } from '@codemirror/view';
+import { EditorView, ViewUpdate, Decoration, DecorationSet, ViewPlugin } from '@codemirror/view';
 import { RangeSetBuilder } from '@codemirror/state';
 import { syntaxTree } from '@codemirror/language';
-import { makeSecretButton } from './CryptoUtils';
+import { SecretButtonWidget } from './SecretButtonWidget';
 
-class SecretButtonWidget extends WidgetType {
-  constructor(public app: App, public encryptedText: string) {
-    super();
-  }
-
-  toDOM(view: EditorView) {
-    return makeSecretButton(this.app, this.encryptedText);
-  }
-}
-
-export const evernoteDecryptor = (app: App) => ViewPlugin.fromClass(class {
+export const makeViewPlugin = (app: App, prefix: string) => ViewPlugin.fromClass(class {
   decorations: DecorationSet;
 
   constructor(view: EditorView) {
@@ -44,13 +34,14 @@ export const evernoteDecryptor = (app: App) => ViewPlugin.fromClass(class {
         enter(node: Node) {
           if (node.type.name.startsWith("inline-code")) {
             const value = view.state.doc.sliceString(node.from, node.to)
-            if(value.startsWith('evernote_secret ')){
+            if(value.startsWith(prefix)){
               if(!selection.ranges.some(range => range.from <= node.to + 1 && range.to >= node.from - 1)){
+                const encryptedText = value.slice(prefix.length);
                 builder.add(
                   node.from,
                   node.to,
                   Decoration.replace({
-                    widget: new SecretButtonWidget(app, value)
+                    widget: new SecretButtonWidget(app, encryptedText)
                   })
                 );
               }
