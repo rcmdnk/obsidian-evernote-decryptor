@@ -1,4 +1,4 @@
-import { App, Notice } from 'obsidian';
+import { App, Notice, Editor } from 'obsidian';
 import { pbkdf2Sync, createHmac, timingSafeEqual, createDecipheriv } from 'crypto';
 import { PasswordModal } from './PasswordModal';
 import { DecryptedTextModal } from './DecryptedTextModal';
@@ -51,8 +51,7 @@ export function decryptText(text: string, password: string): string {
   return plaintext.replace(/<div>/g, '').replace(/<\/div>/g, '');
 }
 
-export function decrypt(app: App, event: MouseEvent, encryptedText: string) {
-  event.preventDefault();
+export function decrypt(app: App, encryptedText: string) {
   const passwordModal = new PasswordModal(app, password => {
     if (password.trim() === '') {
       new Notice('⚠️  Please enter a password.', 10000);
@@ -71,10 +70,20 @@ export function decrypt(app: App, event: MouseEvent, encryptedText: string) {
   passwordModal.open();
 }
 
+export function onclickDecrypt(app: App, encryptedText: string, event: MouseEvent) {
+  event.preventDefault();
+  decrypt(app, encryptedText);
+}
+
 export function makeSecretButton(app: App, encryptedText: string) {
   const button = document.createElement('button');
   button.textContent = 'Evernote Secret';
   button.classList.add('evernote-secret-button');
-  button.onclick = (event: MouseEvent) => decrypt(app, event, encryptedText);
+  button.onclick = (event: MouseEvent) => onclickDecrypt(app, encryptedText, event);
   return button;
+}
+
+export function editorDecrypt(app: App, editor: Editor): void {
+    const selectedText = editor.getSelection();
+    decrypt(app, selectedText);
 }

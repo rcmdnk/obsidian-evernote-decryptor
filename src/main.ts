@@ -1,15 +1,13 @@
-import { Plugin, Notice, Editor, Menu } from 'obsidian';
+import { Plugin, Editor, Menu } from 'obsidian';
 import { evernoteDecryptor } from './EvernoteDecryptorPlugin';
-import { PasswordModal  } from './PasswordModal';
-import { DecryptedTextModal  } from './DecryptedTextModal';
-import { makeSecretButton, decryptText  } from './CryptoUtils';
+import { makeSecretButton, editorDecrypt  } from './CryptoUtils';
 
 export default class EvernoteDecryptorPlugin extends Plugin {
   onload() {
     this.addCommand({
       id: 'decrypt-evernote-encrypted-data',
       name: 'Decrypt Evernote encrypted data',
-      editorCallback: (editor: Editor) => this.evernoteDecrypt(editor),
+      editorCallback: (editor: Editor) => editorDecrypt(this.app, editor),
     });
 
     this.addCommand({
@@ -21,7 +19,7 @@ export default class EvernoteDecryptorPlugin extends Plugin {
     this.registerEvent(this.app.workspace.on('editor-menu', (menu: Menu, editor: Editor) => {
       menu.addItem(item => {
         item.setTitle('Decrypt Evernote encrypted data')
-          .onClick(() => this.evernoteDecrypt(editor));
+          .onClick(() => editorDecrypt(this.app, editor));
       });
       menu.addItem(item => {
         item.setTitle('Format Evernote secret')
@@ -45,27 +43,6 @@ export default class EvernoteDecryptorPlugin extends Plugin {
     this.registerEditorExtension(evernoteDecryptor(this.app));
 
     console.log('EvernoteDecryptor plugin loaded');
-  }
-
-  evernoteDecrypt(editor: Editor): void {
-    const modal = new PasswordModal(this.app, password => {
-      if (password.trim() === '') {
-        new Notice('⚠️  Please enter a password.', 10000);
-        return;
-      }
-
-      try {
-        const selectedText = editor.getSelection();
-        const decryptedText = decryptText(selectedText, password);
-        const decryptedTextModal = new DecryptedTextModal(this.app, decryptedText);
-        decryptedTextModal.open();
-      } catch (error) {
-        new Notice('❌ Failed to decrypt.', 10000);
-        new Notice(error.message, 10000);
-      }
-    });
-
-    modal.open();
   }
 
   formatEvernoteSecret(editor: Editor): void {
