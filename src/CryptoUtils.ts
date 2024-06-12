@@ -1,5 +1,4 @@
 import { App, Notice, Editor } from 'obsidian';
-import { pbkdf2Sync, createHmac, timingSafeEqual, createDecipheriv } from 'crypto';
 import { openPasswordModal } from './PasswordModal';
 import { DecryptedTextModal } from './DecryptedTextModal';
 
@@ -9,7 +8,8 @@ const SALT_HMAC_LENGTH = 16;
 const IV_LENGTH = 16;
 const BODY_HMAC_LENGTH = 32;
 const PBKDF2_ITERATIONS = 50000;
-const KEY_LENGTH = 128 / 8;  // AES-128
+const KEY_LENGTH = 128 / 8;
+const HASH = 'SHA-256';
 
 function extractDataSection(binaryData: Uint8Array, startOffset: number, length: number): { data: Uint8Array, newOffset: number } {
   return {
@@ -18,11 +18,95 @@ function extractDataSection(binaryData: Uint8Array, startOffset: number, length:
   };
 }
 
-function compareDigests(digest1: Buffer, digest2: Buffer): boolean {
+async function deriveBits(password: string, salt: ArrayBuffer, iterations: number, bitsLength: number): Promise<ArrayBuffer> {
+  const enc = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw',
+    enc.encode(password),
+    { name: 'PBKDF2' },
+    false,
+    ['deriveBits']
+  );
+
+  const derivedBits = await crypto.subtle.deriveBits(
+    {
+      name: 'PBKDF2',
+      salt: salt,
+      iterations: iterations,
+      hash: HASH,
+    },
+    keyMaterial,
+    bitsLength
+  );
+
+  return derivedBits;
+}
+
+async function pbkdf2Sync(password: string, salt: ArrayBuffer, iterations: number, keylen: number): Promise<CryptoKey> {
+  const derivedBits = await deriveBits(password, salt, iterations, keylen * 8);
+
+  const keyHmac = await crypto.subtle.importKey(
+    'raw',
+    derivedBits,
+    { name: 'HMAC', hash: HASH },
+    true,
+    ['sign']
+  );
+  return keyHmac;
+}
+
+async function deriveKey(password: string, salt: ArrayBuffer, keyLength: number, usage: KeyUsage[]): Promise<CryptoKey> {
+  const enc = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw',
+    enc.encode(password),
+    { name: 'PBKDF2' },
+    false,
+    ['deriveKey', 'deriveBits']
+  );
+
+  const derivedKey = await crypto.subtle.deriveKey(
+    {
+      name: 'PBKDF2',
+      salt: salt,
+      iterations: PBKDF2_ITERATIONS,
+      hash: HASH,
+    },
+    keyMaterial,
+    { name: 'AES-CBC', length: keyLength * 8 },
+    true,
+    usage
+  );
+
+  return derivedKey;
+}
+
+async function createHmac(key: CryptoKey, data: ArrayBuffer): Promise<ArrayBuffer> {
+  const importedKey = await crypto.subtle.importKey(
+    'raw',
+    await crypto.subtle.exportKey('raw', key),
+    { name: 'HMAC', hash: HASH },
+    true,
+    ['sign']
+  );
+
+  return crypto.subtle.sign('HMAC', importedKey, data);
+}
+
+function timingSafeEqual(a: Uint8Array, b: Uint8Array): boolean {
+  let result = 0;
+  for (let i = 0; i < a.length; i++) {
+    result |= a[i] ^ b[i];
+  }
+  return result === 0;
+}
+
+function compareDigests(digest1: Uint8Array, digest2: Uint8Array): boolean {
   return digest1.length === digest2.length && timingSafeEqual(digest1, digest2);
 }
 
-function decrypt(text: string, password: string): string {
+
+async function decrypt(text: string, password: string): Promise<string> {
   const binaryText = Uint8Array.from(atob(text), c => c.charCodeAt(0));
 
   let offset = RESERVED_LENGTH;
@@ -37,18 +121,17 @@ function decrypt(text: string, password: string): string {
   const body = binaryText.slice(0, -BODY_HMAC_LENGTH);
   const bodyHmac = binaryText.slice(-BODY_HMAC_LENGTH);
 
-  const keyHmac = pbkdf2Sync(password, saltHmac, PBKDF2_ITERATIONS, KEY_LENGTH, 'sha256');
-  const testHmac = createHmac('sha256', keyHmac).update(body).digest();
+  const keyHmac = await pbkdf2Sync(password, saltHmac, PBKDF2_ITERATIONS, KEY_LENGTH);
+  const testHmac = await createHmac(keyHmac, body);
 
-  if (!compareDigests(testHmac, Buffer.from(bodyHmac))) {
+  if (!compareDigests(new Uint8Array(testHmac), new Uint8Array(bodyHmac))) {
     throw new Error('HMAC verification failed');
   }
 
-  const key = pbkdf2Sync(password, salt, PBKDF2_ITERATIONS, KEY_LENGTH, 'sha256');
-  const decipher = createDecipheriv('aes-128-cbc', key, iv);
-  let plaintext = decipher.update(ciphertext, undefined, 'utf8');
-  plaintext += decipher.final('utf8');
-  return plaintext.replace(/<div>/g, '').replace(/<\/div>/g, '');
+  const key = await deriveKey(password, salt, KEY_LENGTH, ['decrypt']);
+  const decrypted = await crypto.subtle.decrypt({ name: 'AES-CBC', iv: iv }, key, ciphertext);
+
+  return new TextDecoder().decode(decrypted).replace(/<div>/g, '').replace(/<\/div>/g, '');
 }
 
 async function decryptWrapper(app: App, encryptedText: string): Promise<string | null> {
@@ -59,7 +142,7 @@ async function decryptWrapper(app: App, encryptedText: string): Promise<string |
   }
 
   try {
-    const decryptedText = decrypt(encryptedText, password);
+    const decryptedText = await decrypt(encryptedText, password);
     return decryptedText;
   } catch (error) {
     new Notice('❌ Failed to decrypt.', 10000);
