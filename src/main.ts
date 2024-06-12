@@ -1,31 +1,33 @@
 import { Plugin, Editor, Menu } from 'obsidian';
-import { evernoteDecryptor } from './EvernoteDecryptorPlugin';
 import { makeSecretButton, editorDecrypt  } from './CryptoUtils';
 import { makeViewPlugin  } from './ViewPlugin';
 
 const PREFIX = 'evernote_secret ';
+const ID_PREFIX = 'evernote-dectyptor-';
+const DECRYPT_NAME = 'Decrypt Evernote encrypted data';
+const FORMAT_NAME = 'Format Evernote secret';
 
 export default class EvernoteDecryptorPlugin extends Plugin {
   onload() {
     this.addCommand({
-      id: 'decrypt-evernote-encrypted-data',
-      name: 'Decrypt Evernote encrypted data',
+      id: `${ID_PREFIX}decrypt`,
+      name: DECRYPT_NAME,
       editorCallback: (editor: Editor) => editorDecrypt(this.app, editor),
     });
 
     this.addCommand({
-      id: 'format-evernote-secret',
-      name: 'Format Evernote secret',
+      id: `${ID_PREFIX}format`,
+      name: FORMAT_NAME,
       editorCallback: (editor: Editor) => this.formatEvernoteSecret(editor),
     });
 
     this.registerEvent(this.app.workspace.on('editor-menu', (menu: Menu, editor: Editor) => {
       menu.addItem(item => {
-        item.setTitle('Decrypt Evernote encrypted data')
+        item.setTitle(DECRYPT_NAME)
           .onClick(() => editorDecrypt(this.app, editor));
       });
       menu.addItem(item => {
-        item.setTitle('Format Evernote secret')
+        item.setTitle(FORMAT_NAME)
           .onClick(() => this.formatEvernoteSecret(editor));
       });
     }));
