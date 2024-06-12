@@ -1,6 +1,6 @@
 import { App, Notice, Editor } from 'obsidian';
 import { pbkdf2Sync, createHmac, timingSafeEqual, createDecipheriv } from 'crypto';
-import { PasswordModal } from './PasswordModal';
+import { openPasswordModal } from './PasswordModal';
 import { DecryptedTextModal } from './DecryptedTextModal';
 
 const RESERVED_LENGTH = 4;
@@ -11,7 +11,7 @@ const BODY_HMAC_LENGTH = 32;
 const PBKDF2_ITERATIONS = 50000;
 const KEY_LENGTH = 128 / 8;  // AES-128
 
-function extractDataSection(binaryData: Uint8Array, startOffset: number, length: number) {
+function extractDataSection(binaryData: Uint8Array, startOffset: number, length: number): { data: Uint8Array, newOffset: number } {
   return {
     data: binaryData.slice(startOffset, startOffset + length),
     newOffset: startOffset + length
@@ -51,31 +51,38 @@ function decrypt(text: string, password: string): string {
   return plaintext.replace(/<div>/g, '').replace(/<\/div>/g, '');
 }
 
-function decryptWrapper(app: App, encryptedText: string) {
-  const passwordModal = new PasswordModal(app, password => {
-    if (password.trim() === '') {
-      new Notice('⚠️  Please enter a password.', 10000);
-      return;
-    }
+async function decryptWrapper(app: App, encryptedText: string): Promise<string | null> {
+  const password = await openPasswordModal(app);
+  if (password.trim() === '') {
+    new Notice('⚠️  Please enter a password.', 10000);
+    return null;
+  }
 
-    try {
-      const decryptedText = decrypt(encryptedText, password);
-      const decryptedTextModal = new DecryptedTextModal(app, decryptedText);
-      decryptedTextModal.open();
-    } catch (error) {
-      new Notice('❌ Failed to decrypt.', 10000);
-      new Notice(error.message, 10000);
-    }
-  });
-  passwordModal.open();
+  try {
+    const decryptedText = decrypt(encryptedText, password);
+    return decryptedText;
+  } catch (error) {
+    new Notice('❌ Failed to decrypt.', 10000);
+    new Notice(error.message, 10000);
+    return null;
+  }
+}
+
+async function showDecryptedText(app: App, encryptedText: string): Promise<void> {
+  const decryptedText = await decryptWrapper(app, encryptedText);
+  if (decryptedText === null) {
+    return;
+  }
+  const decryptedTextModal = new DecryptedTextModal(app, decryptedText);
+  decryptedTextModal.open();
 }
 
 function onclickDecrypt(app: App, encryptedText: string, event: MouseEvent) {
   event.preventDefault();
-  decryptWrapper(app, encryptedText);
+  showDecryptedText(app, encryptedText);
 }
 
-export function makeSecretButton(app: App, encryptedText: string) {
+export function makeSecretButton(app: App, encryptedText: string): HTMLButtonElement {
   const button = document.createElement('button');
   button.textContent = 'Evernote Secret';
   button.classList.add('evernote-secret-button');
@@ -84,6 +91,6 @@ export function makeSecretButton(app: App, encryptedText: string) {
 }
 
 export function editorDecrypt(app: App, editor: Editor): void {
-    const selectedText = editor.getSelection();
-    decryptWrapper(app, selectedText);
+  const selectedText = editor.getSelection();
+  showDecryptedText(app, selectedText);
 }

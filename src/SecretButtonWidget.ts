@@ -1,3 +1,4 @@
+import { App } from 'obsidian';
 import { EditorView, WidgetType } from '@codemirror/view';
 import { makeSecretButton } from './CryptoUtils';
 
@@ -7,7 +8,7 @@ export class SecretButtonWidget extends WidgetType {
     super();
   }
 
-  toDOM(view: EditorView) {
+  toDOM(_: EditorView): HTMLElement {
     return makeSecretButton(this.app, this.encryptedText);
   }
 }

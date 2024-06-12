@@ -8,7 +8,7 @@ const DECRYPT_NAME = 'Decrypt Evernote encrypted data';
 const FORMAT_NAME = 'Format Evernote secret';
 
 export default class EvernoteDecryptorPlugin extends Plugin {
-  onload() {
+  onload(): void {
     this.addCommand({
       id: `${ID_PREFIX}decrypt`,
       name: DECRYPT_NAME,
@@ -18,7 +18,7 @@ export default class EvernoteDecryptorPlugin extends Plugin {
     this.addCommand({
       id: `${ID_PREFIX}format`,
       name: FORMAT_NAME,
-      editorCallback: (editor: Editor) => this.formatEvernoteSecret(editor),
+      editorCallback: (editor: Editor) => this.formatSecret(editor),
     });
 
     this.registerEvent(this.app.workspace.on('editor-menu', (menu: Menu, editor: Editor) => {
@@ -28,13 +28,19 @@ export default class EvernoteDecryptorPlugin extends Plugin {
       });
       menu.addItem(item => {
         item.setTitle(FORMAT_NAME)
-          .onClick(() => this.formatEvernoteSecret(editor));
+          .onClick(() => this.formatSecret(editor));
       });
     }));
 
-    this.registerMarkdownPostProcessor((el, ctx) => {
+    this.registerMarkdownPostProcessor((el, _) => {
       const codeBlocks = el.querySelectorAll('code');
       codeBlocks.forEach((codeBlock) => {
+        if (codeBlock.parentElement === null) {
+            return;
+        }
+        if (codeBlock.textContent === null) {
+            return;
+        }
         if (codeBlock.textContent.startsWith(PREFIX)) {
           const encryptedText = codeBlock.textContent.slice(PREFIX.length);
           codeBlock.style.display = 'none';
@@ -47,16 +53,16 @@ export default class EvernoteDecryptorPlugin extends Plugin {
 
     this.registerEditorExtension(makeViewPlugin(this.app, PREFIX));
 
-    console.log('EvernoteDecryptor plugin loaded');
+    console.log(`${this.constructor.name} loaded`);
   }
 
-  formatEvernoteSecret(editor: Editor): void {
+  formatSecret(editor: Editor): void {
     const selectedText = editor.getSelection();
-    const formattedText = `\`evernote_secret ${selectedText}\``;
+    const formattedText = `\`${PREFIX}${selectedText}\``;
     editor.replaceSelection(formattedText);
   }
 
-  onunload() {
-    console.log('EvernoteDecryptor plugin unloaded');
+  onunload(): void {
+    console.log(`${this.constructor.name} unloaded`);
   }
 }

@@ -9,7 +9,7 @@ export class PasswordModal extends Modal {
     this.onSubmit = onSubmit;
   }
 
-  onOpen() {
+  onOpen(): void {
     const { contentEl } = this;
 
     contentEl.createEl('h2', { text: 'Enter Evernote encryption password.' });
@@ -35,7 +35,7 @@ export class PasswordModal extends Modal {
         }));
   }
 
-  onClose() {
+  onClose(): void {
     const { contentEl } = this;
     contentEl.empty();
   }
@@ -45,3 +45,10 @@ export class PasswordModal extends Modal {
     this.close();
   }
 }
+
+export function openPasswordModal(app: App): Promise<string> {
+  return new Promise((resolve) => {
+    new PasswordModal(app, resolve).open();
+  });
+}
+

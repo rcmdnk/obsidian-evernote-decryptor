@@ -8,7 +8,7 @@ export class DecryptedTextModal extends Modal {
     this.decryptedText = decryptedText;
   }
 
-  onOpen() {
+  onOpen(): void {
     const { contentEl } = this;
 
     contentEl.createEl('h2', { text: 'Decrypted Text' });
@@ -30,9 +30,8 @@ export class DecryptedTextModal extends Modal {
         }));
   }
 
-  onClose() {
+  onClose(): void {
     const { contentEl } = this;
     contentEl.empty();
   }
 }
-

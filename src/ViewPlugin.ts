@@ -11,7 +11,7 @@ export const makeViewPlugin = (app: App, prefix: string) => ViewPlugin.fromClass
     this.decorations = this.createDecorations(view);
   }
 
-  update(update: ViewUpdate) {
+  update(update: ViewUpdate): void {
     if (!update.state.field(editorLivePreviewField)) {
       this.decorations = Decoration.none;
       return;
