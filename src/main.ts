@@ -1,28 +1,42 @@
-import { Plugin, Editor, Menu } from 'obsidian';
-import { encryptWrapper, decryptWrapper, editorDecrypt } from './CryptoUtils';
+import { App, Plugin, Menu, Setting, Editor, PluginSettingTab } from 'obsidian';
+import { encryptWrapper, decryptWrapper, showDecryptedText } from './CryptoUtils';
 import { makeViewPlugin  } from './ViewPlugin';
 import { makeSecretButton  } from './SecretButtonWidget';
 
+const PLUGIN_NAME = 'Evernote Decryptor';
 const PREFIX = 'evernote_secret ';
 const BUTTON_TEXT = 'Evernote Secret';
 const BUTTON_CLASS = 'evernote-secret-button';
-
 const ID_PREFIX = 'evernote-dectyptor-';
 const DECRYPT_NAME = 'Decrypt Evernote encrypted data';
 const DECRYPT_REPLACE_NAME = 'Decrypt Evernote encrypted data and replace';
 const ENCRYPT_NAME = 'Encrypt data as Evernote secret';
 const FORMAT_NAME = 'Format Evernote secret';
 
+interface Settings {
+  showEditorMenu: boolean;
+}
+
+const DEFAULT_SETTINGS: Settings = {
+  showEditorMenu: true,
+};
+
 export default class EvernoteDecryptorPlugin extends Plugin {
-  onload(): void {
+  settings: Settings;
+  private contextMenuListener: (menu: Menu, editor: Editor) => void;
+
+  async onload(): Promise<void> {
+    await this.loadSettings();
+    this.addSettingTab(new SettingTab(this.app, this));
+
     this.addCommand({
       id: `${ID_PREFIX}decrypt`,
       name: DECRYPT_NAME,
-      editorCallback: (editor: Editor) => editorDecrypt(this.app, editor),
+      editorCallback: (editor: Editor) => this.editorDecrypt(editor),
     });
     this.addCommand({
       id: `${ID_PREFIX}decrypt-replace`,
-      name: DECRYPT_NAME,
+      name: DECRYPT_REPLACE_NAME,
       editorCallback: (editor: Editor) => this.decryptReplace(editor),
     });
     this.addCommand({
@@ -36,34 +50,11 @@ export default class EvernoteDecryptorPlugin extends Plugin {
       editorCallback: (editor: Editor) => this.formatSecret(editor),
     });
 
-    this.registerEvent(this.app.workspace.on('editor-menu', (menu: Menu, editor: Editor) => {
-      menu.addItem(item => {
-        item.setTitle(DECRYPT_NAME)
-          .onClick(() => editorDecrypt(this.app, editor));
-      });
-      menu.addItem(item => {
-        item.setTitle(DECRYPT_REPLACE_NAME)
-          .onClick(() => this.decryptReplace(editor));
-      });
-      menu.addItem(item => {
-        item.setTitle(ENCRYPT_NAME)
-          .onClick(() => this.makeSecret(editor));
-      });
-      menu.addItem(item => {
-        item.setTitle(FORMAT_NAME)
-          .onClick(() => this.formatSecret(editor));
-      });
-    }));
-
     this.registerMarkdownPostProcessor((el, _) => {
       const codeBlocks = el.querySelectorAll('code');
       codeBlocks.forEach((codeBlock) => {
-        if (codeBlock.parentElement === null) {
-            return;
-        }
-        if (codeBlock.textContent === null) {
-            return;
-        }
+        if (codeBlock.parentElement === null) return;
+        if (codeBlock.textContent === null) return;
         if (codeBlock.textContent.startsWith(PREFIX)) {
           const encryptedText = codeBlock.textContent.slice(PREFIX.length);
           codeBlock.style.display = 'none';
@@ -76,31 +67,69 @@ export default class EvernoteDecryptorPlugin extends Plugin {
 
     this.registerEditorExtension(makeViewPlugin(this.app, PREFIX, BUTTON_TEXT, BUTTON_CLASS));
 
-    console.log(`${this.constructor.name} loaded`);
+    this.updateContextMenu();
+
+    console.log(`${PLUGIN_NAME} loaded`);
+  }
+
+  async loadSettings(): Promise<void> {
+    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+  }
+
+  async saveSettings(): Promise<void> {
+    await this.saveData(this.settings);
+  }
+
+  updateContextMenu(): void {
+    if (this.contextMenuListener) {
+      this.app.workspace.off('editor-menu', this.contextMenuListener);
+    }
+    this.contextMenuListener = (menu: Menu, editor: Editor) => {
+      if (this.settings.showEditorMenu) {
+        menu.addItem(item => {
+          item.setTitle(DECRYPT_NAME)
+            .onClick(() => this.editorDecrypt(editor));
+        });
+        menu.addItem(item => {
+          item.setTitle(DECRYPT_REPLACE_NAME)
+            .onClick(() => this.decryptReplace(editor));
+        });
+        menu.addItem(item => {
+          item.setTitle(ENCRYPT_NAME)
+            .onClick(() => this.makeSecret(editor));
+        });
+        menu.addItem(item => {
+          item.setTitle(FORMAT_NAME)
+            .onClick(() => this.formatSecret(editor));
+        });
+      }
+    };
+    this.registerEvent(this.app.workspace.on('editor-menu', this.contextMenuListener));
+  }
+
+  editorDecrypt(editor: Editor): void {
+    const selectedText = editor.getSelection();
+    showDecryptedText(this.app, selectedText);
+  }
+
+  async decryptReplace(editor: Editor): Promise<void> {
+    let selectedText = editor.getSelection().trim().replace(/^`+|`+$/g, '');
+    if (selectedText.startsWith(PREFIX)) {
+      selectedText = selectedText.slice(PREFIX.length);
+    }
+    const decryptedText = await decryptWrapper(this.app, selectedText);
+    if (decryptedText !== null) {
+      editor.replaceSelection(decryptedText);
+    }
   }
 
   async makeSecret(editor: Editor): Promise<void> {
     const selectedText = editor.getSelection();
     const encryptedText = await encryptWrapper(this.app, selectedText);
-    if (encryptedText === null) {
-      return;
+    if (encryptedText !== null) {
+      const formattedText = `\`${PREFIX}${encryptedText}\``;
+      editor.replaceSelection(formattedText);
     }
-    const formattedText = `\`${PREFIX}${encryptedText}\``;
-    editor.replaceSelection(formattedText);
-  }
-
-  async decryptReplace(editor: Editor): Promise<void> {
-    let selectedText = editor.getSelection();
-    selectedText = selectedText.trim();
-    selectedText = selectedText.replace(/^`+|`+$/g, '');
-    if (selectedText.startsWith(PREFIX)) {
-      selectedText = selectedText.slice(PREFIX.length);
-    }
-    const decryptedText = await decryptWrapper(this.app, selectedText);
-    if (decryptedText === null) {
-      return;
-    }
-    editor.replaceSelection(decryptedText);
   }
 
   formatSecret(editor: Editor): void {
@@ -110,6 +139,33 @@ export default class EvernoteDecryptorPlugin extends Plugin {
   }
 
   onunload(): void {
-    console.log(`${this.constructor.name} unloaded`);
+    console.log(`${PLUGIN_NAME} unloaded`);
+  }
+}
+
+class SettingTab extends PluginSettingTab {
+  plugin: EvernoteDecryptorPlugin;
+
+  constructor(app: App, plugin: EvernoteDecryptorPlugin) {
+    super(app, plugin);
+    this.plugin = plugin;
+  }
+
+  display(): void {
+    const { containerEl } = this;
+    containerEl.empty();
+
+    containerEl.createEl('h1', { text: `${PLUGIN_NAME} Settings` });
+
+    new Setting(containerEl)
+      .setName('Show Editor Context Menu Item')
+      .setDesc('Toggle the display of the editor context menu item.')
+      .addToggle(toggle => toggle
+        .setValue(this.plugin.settings.showEditorMenu)
+        .onChange(async (value) => {
+          this.plugin.settings.showEditorMenu = value;
+          await this.plugin.saveSettings();
+          this.plugin.updateContextMenu();
+        }));
   }
 }

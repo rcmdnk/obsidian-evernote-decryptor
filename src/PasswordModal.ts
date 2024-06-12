@@ -11,8 +11,16 @@ export class PasswordModal extends Modal {
 
   onOpen(): void {
     const { contentEl } = this;
-
     contentEl.createEl('h2', { text: 'Enter Evernote encryption password.' });
+    this.createPasswordField(contentEl);
+    this.createSubmitButton(contentEl);
+  }
+
+  onClose(): void {
+    this.contentEl.empty();
+  }
+
+  private createPasswordField(contentEl: HTMLElement) {
     new Setting(contentEl)
       .setName('Password')
       .addText(text => {
@@ -25,7 +33,9 @@ export class PasswordModal extends Modal {
           }
         });
       });
+  }
 
+  private createSubmitButton(contentEl: HTMLElement) {
     new Setting(contentEl)
       .addButton(btn => btn
         .setButtonText('Submit')
@@ -33,11 +43,6 @@ export class PasswordModal extends Modal {
         .onClick(() => {
           this.onPasswordSubmit();
         }));
-  }
-
-  onClose(): void {
-    const { contentEl } = this;
-    contentEl.empty();
   }
 
   private onPasswordSubmit() {

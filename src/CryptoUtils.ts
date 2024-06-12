@@ -28,7 +28,7 @@ async function deriveBits(password: string, salt: ArrayBuffer, iterations: numbe
     ['deriveBits']
   );
 
-  const derivedBits = await crypto.subtle.deriveBits(
+  return crypto.subtle.deriveBits(
     {
       name: 'PBKDF2',
       salt: salt,
@@ -38,21 +38,17 @@ async function deriveBits(password: string, salt: ArrayBuffer, iterations: numbe
     keyMaterial,
     bitsLength
   );
-
-  return derivedBits;
 }
 
 async function pbkdf2Sync(password: string, salt: ArrayBuffer, iterations: number, keylen: number): Promise<CryptoKey> {
   const derivedBits = await deriveBits(password, salt, iterations, keylen * 8);
-
-  const keyHmac = await crypto.subtle.importKey(
+  return crypto.subtle.importKey(
     'raw',
     derivedBits,
     { name: 'HMAC', hash: HASH },
     true,
     ['sign']
   );
-  return keyHmac;
 }
 
 async function deriveKey(password: string, salt: ArrayBuffer, keyLength: number, usage: KeyUsage[]): Promise<CryptoKey> {
@@ -65,7 +61,7 @@ async function deriveKey(password: string, salt: ArrayBuffer, keyLength: number,
     ['deriveKey', 'deriveBits']
   );
 
-  const derivedKey = await crypto.subtle.deriveKey(
+  return crypto.subtle.deriveKey(
     {
       name: 'PBKDF2',
       salt: salt,
@@ -77,8 +73,6 @@ async function deriveKey(password: string, salt: ArrayBuffer, keyLength: number,
     true,
     usage
   );
-
-  return derivedKey;
 }
 
 async function createHmac(key: CryptoKey, data: ArrayBuffer): Promise<ArrayBuffer> {
@@ -94,10 +88,7 @@ async function createHmac(key: CryptoKey, data: ArrayBuffer): Promise<ArrayBuffe
 }
 
 function concatenateArrays(...arrays: Uint8Array[]): Uint8Array {
-  let totalLength = 0;
-  for (const arr of arrays) {
-    totalLength += arr.length;
-  }
+  const totalLength = arrays.reduce((sum, arr) => sum + arr.length, 0);
   const result = new Uint8Array(totalLength);
   let offset = 0;
   for (const arr of arrays) {
@@ -128,42 +119,6 @@ async function encrypt(text: string, password: string): Promise<string> {
   return btoa(String.fromCharCode(...finalData));
 }
 
-export async function encryptWrapper(app: App, decryptedText: string): Promise<string | null> {
-  const password = await openPasswordModal(app);
-  if (password.trim() === '') {
-    new Notice('⚠️  Please enter a password.', 10000);
-    return null;
-  }
-
-  try {
-    const encryptedText = await encrypt(decryptedText, password);
-    return encryptedText;
-  } catch (error) {
-    new Notice('❌ Failed to encrypt.', 10000);
-    new Notice(error.message, 10000);
-    return null;
-  }
-}
-
-function extractDataSection(binaryData: Uint8Array, startOffset: number, length: number): { data: Uint8Array, newOffset: number } {
-  return {
-    data: binaryData.slice(startOffset, startOffset + length),
-    newOffset: startOffset + length
-  };
-}
-
-function timingSafeEqual(a: Uint8Array, b: Uint8Array): boolean {
-  let result = 0;
-  for (let i = 0; i < a.length; i++) {
-    result |= a[i] ^ b[i];
-  }
-  return result === 0;
-}
-
-function compareDigests(digest1: Uint8Array, digest2: Uint8Array): boolean {
-  return digest1.length === digest2.length && timingSafeEqual(digest1, digest2);
-}
-
 async function decrypt(text: string, password: string): Promise<string> {
   const binaryText = Uint8Array.from(atob(text), c => c.charCodeAt(0));
 
@@ -192,6 +147,41 @@ async function decrypt(text: string, password: string): Promise<string> {
   return new TextDecoder().decode(decrypted).replace(/<div>/g, '').replace(/<\/div>/g, '');
 }
 
+function extractDataSection(binaryData: Uint8Array, startOffset: number, length: number): { data: Uint8Array, newOffset: number } {
+  return {
+    data: binaryData.slice(startOffset, startOffset + length),
+    newOffset: startOffset + length
+  };
+}
+
+function timingSafeEqual(a: Uint8Array, b: Uint8Array): boolean {
+  let result = 0;
+  for (let i = 0; i < a.length; i++) {
+    result |= a[i] ^ b[i];
+  }
+  return result === 0;
+}
+
+function compareDigests(digest1: Uint8Array, digest2: Uint8Array): boolean {
+  return digest1.length === digest2.length && timingSafeEqual(digest1, digest2);
+}
+
+export async function encryptWrapper(app: App, decryptedText: string): Promise<string | null> {
+  const password = await openPasswordModal(app);
+  if (password.trim() === '') {
+    new Notice('⚠️  Please enter a password.', 10000);
+    return null;
+  }
+
+  try {
+    return await encrypt(decryptedText, password);
+  } catch (error) {
+    new Notice('❌ Failed to encrypt.', 10000);
+    new Notice(error.message, 10000);
+    return null;
+  }
+}
+
 export async function decryptWrapper(app: App, encryptedText: string): Promise<string | null> {
   const password = await openPasswordModal(app);
   if (password.trim() === '') {
@@ -200,8 +190,7 @@ export async function decryptWrapper(app: App, encryptedText: string): Promise<s
   }
 
   try {
-    const decryptedText = await decrypt(encryptedText, password);
-    return decryptedText;
+    return await decrypt(encryptedText, password);
   } catch (error) {
     new Notice('❌ Failed to decrypt.', 10000);
     new Notice(error.message, 10000);
@@ -209,21 +198,9 @@ export async function decryptWrapper(app: App, encryptedText: string): Promise<s
   }
 }
 
-async function showDecryptedText(app: App, encryptedText: string): Promise<void> {
+export async function showDecryptedText(app: App, encryptedText: string): Promise<void> {
   const decryptedText = await decryptWrapper(app, encryptedText);
-  if (decryptedText === null) {
-    return;
+  if (decryptedText !== null) {
+    new DecryptedTextModal(app, decryptedText).open();
   }
-  const decryptedTextModal = new DecryptedTextModal(app, decryptedText);
-  decryptedTextModal.open();
-}
-
-export function onclickDecrypt(app: App, encryptedText: string, event: MouseEvent) {
-  event.preventDefault();
-  showDecryptedText(app, encryptedText);
-}
-
-export function editorDecrypt(app: App, editor: Editor): void {
-  const selectedText = editor.getSelection();
-  showDecryptedText(app, selectedText);
 }
