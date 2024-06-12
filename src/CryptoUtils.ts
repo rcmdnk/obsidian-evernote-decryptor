@@ -2,7 +2,8 @@ import { App, Notice, Editor } from 'obsidian';
 import { openPasswordModal } from './PasswordModal';
 import { DecryptedTextModal } from './DecryptedTextModal';
 
-const RESERVED_LENGTH = 4;
+const RESERVED_VALUE = new TextEncoder().encode('ENC0');
+const RESERVED_LENGTH = RESERVED_VALUE.length;
 const SALT_LENGTH = 16;
 const SALT_HMAC_LENGTH = 16;
 const IV_LENGTH = 16;
@@ -11,11 +12,10 @@ const PBKDF2_ITERATIONS = 50000;
 const KEY_LENGTH = 128 / 8;
 const HASH = 'SHA-256';
 
-function extractDataSection(binaryData: Uint8Array, startOffset: number, length: number): { data: Uint8Array, newOffset: number } {
-  return {
-    data: binaryData.slice(startOffset, startOffset + length),
-    newOffset: startOffset + length
-  };
+function generateRandomBytes(length: number): Uint8Array {
+  const array = new Uint8Array(length);
+  crypto.getRandomValues(array);
+  return array;
 }
 
 async function deriveBits(password: string, salt: ArrayBuffer, iterations: number, bitsLength: number): Promise<ArrayBuffer> {
@@ -93,6 +93,65 @@ async function createHmac(key: CryptoKey, data: ArrayBuffer): Promise<ArrayBuffe
   return crypto.subtle.sign('HMAC', importedKey, data);
 }
 
+function concatenateArrays(...arrays: Uint8Array[]): Uint8Array {
+  let totalLength = 0;
+  for (const arr of arrays) {
+    totalLength += arr.length;
+  }
+  const result = new Uint8Array(totalLength);
+  let offset = 0;
+  for (const arr of arrays) {
+    result.set(arr, offset);
+    offset += arr.length;
+  }
+  return result;
+}
+
+async function encrypt(text: string, password: string): Promise<string> {
+  const reserved = RESERVED_VALUE;
+  const salt = generateRandomBytes(SALT_LENGTH);
+  const saltHmac = generateRandomBytes(SALT_HMAC_LENGTH);
+  const iv = generateRandomBytes(IV_LENGTH);
+
+  const key = await deriveKey(password, salt, KEY_LENGTH, ['encrypt']);
+  const keyHmac = await pbkdf2Sync(password, saltHmac, PBKDF2_ITERATIONS, KEY_LENGTH);
+
+  const enc = new TextEncoder();
+  const plaintext = enc.encode(text);
+
+  const ciphertext = await crypto.subtle.encrypt({ name: 'AES-CBC', iv: iv }, key, plaintext);
+
+  const body = concatenateArrays(reserved, salt, saltHmac, iv, new Uint8Array(ciphertext));
+  const bodyHmac = new Uint8Array(await createHmac(keyHmac, body));
+
+  const finalData = concatenateArrays(body, bodyHmac);
+  return btoa(String.fromCharCode(...finalData));
+}
+
+export async function encryptWrapper(app: App, decryptedText: string): Promise<string | null> {
+  const password = await openPasswordModal(app);
+  if (password.trim() === '') {
+    new Notice('⚠️  Please enter a password.', 10000);
+    return null;
+  }
+
+  try {
+    const encryptedText = await encrypt(decryptedText, password);
+    return encryptedText;
+  } catch (error) {
+    new Notice('❌ Failed to encrypt.', 10000);
+    new Notice(error.message, 10000);
+    return null;
+  }
+}
+
+function extractDataSection(binaryData: Uint8Array, startOffset: number, length: number): { data: Uint8Array, newOffset: number } {
+  return {
+    data: binaryData.slice(startOffset, startOffset + length),
+    newOffset: startOffset + length
+  };
+}
+
 function timingSafeEqual(a: Uint8Array, b: Uint8Array): boolean {
   let result = 0;
   for (let i = 0; i < a.length; i++) {
@@ -104,7 +163,6 @@ function timingSafeEqual(a: Uint8Array, b: Uint8Array): boolean {
 function compareDigests(digest1: Uint8Array, digest2: Uint8Array): boolean {
   return digest1.length === digest2.length && timingSafeEqual(digest1, digest2);
 }
-
 
 async function decrypt(text: string, password: string): Promise<string> {
   const binaryText = Uint8Array.from(atob(text), c => c.charCodeAt(0));
@@ -134,7 +192,7 @@ async function decrypt(text: string, password: string): Promise<string> {
   return new TextDecoder().decode(decrypted).replace(/<div>/g, '').replace(/<\/div>/g, '');
 }
 
-async function decryptWrapper(app: App, encryptedText: string): Promise<string | null> {
+export async function decryptWrapper(app: App, encryptedText: string): Promise<string | null> {
   const password = await openPasswordModal(app);
   if (password.trim() === '') {
     new Notice('⚠️  Please enter a password.', 10000);
@@ -160,17 +218,9 @@ async function showDecryptedText(app: App, encryptedText: string): Promise<void>
   decryptedTextModal.open();
 }
 
-function onclickDecrypt(app: App, encryptedText: string, event: MouseEvent) {
+export function onclickDecrypt(app: App, encryptedText: string, event: MouseEvent) {
   event.preventDefault();
   showDecryptedText(app, encryptedText);
-}
-
-export function makeSecretButton(app: App, encryptedText: string): HTMLButtonElement {
-  const button = document.createElement('button');
-  button.textContent = 'Evernote Secret';
-  button.classList.add('evernote-secret-button');
-  button.onclick = (event: MouseEvent) => onclickDecrypt(app, encryptedText, event);
-  return button;
 }
 
 export function editorDecrypt(app: App, editor: Editor): void {

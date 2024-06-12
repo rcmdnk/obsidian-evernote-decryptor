@@ -4,7 +4,7 @@ import { RangeSetBuilder } from '@codemirror/state';
 import { syntaxTree } from '@codemirror/language';
 import { SecretButtonWidget } from './SecretButtonWidget';
 
-export const makeViewPlugin = (app: App, prefix: string) => ViewPlugin.fromClass(class {
+export const makeViewPlugin = (app: App, prefix: string, button_text: string, button_class: string) => ViewPlugin.fromClass(class {
   decorations: DecorationSet;
 
   constructor(view: EditorView) {
@@ -41,7 +41,7 @@ export const makeViewPlugin = (app: App, prefix: string) => ViewPlugin.fromClass
                   node.from,
                   node.to,
                   Decoration.replace({
-                    widget: new SecretButtonWidget(app, encryptedText)
+                    widget: new SecretButtonWidget(app, encryptedText, button_text, button_class)
                   })
                 );
               }

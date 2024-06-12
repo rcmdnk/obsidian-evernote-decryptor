@@ -2,6 +2,8 @@
 
 Manage encrypted data imported from Evernote.
 
+Decryption method is based on the article: [Decoding the Evernote en-crypt field payload](https://soundly.me/decoding-the-Evernote-en-crypt-field-payload/).
+
 ## Usage
 
 Select the encrypted data and click `Decrypt Evernote encrypted data`
