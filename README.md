@@ -10,19 +10,19 @@ Following commands will be added:
 
 - **Decrypt Evernote encrypted data**: Decrypt Evernote the selected encrypted text by entering the password and show the decrypted text.
 
-![decrypt](https://github.com/rcmdnk/cocoro/obsidian-evernote-decryptor/master/images/decrypt.gif?raw=true)
+![decrypt](https://github.com/rcmdnk/obsidian-evernote-decryptor/blob/master/images/decrypt.gif?raw=true)
 
 - **Decrypt Evernote encrypted data and replace**: Decrypt Evernote the selected encrypted text and replace the text with the decrypted text.
 
-![replace](https://github.com/rcmdnk/cocoro/obsidian-evernote-decryptor/master/images/replace.gif?raw=true)
+![replace](https://github.com/rcmdnk/obsidian-evernote-decryptor/blob/master/images/replace.gif?raw=true)
 
 - **Encrypt data as Evernote secret**: Encrypt the selected text using a password and replace the text with the encrypted data.
 
-![encrypt](https://github.com/rcmdnk/cocoro/obsidian-evernote-decryptor/master/images/encrypt.gif?raw=true)
+![encrypt](https://github.com/rcmdnk/obsidian-evernote-decryptor/blob/master/images/encrypt.gif?raw=true)
 
 - **Format Evernote secret**: Format the selected encrypted text as Evernote secret format.
 
-![format](https://github.com/rcmdnk/cocoro/obsidian-evernote-decryptor/master/images/format.gif?raw=true)
+![format](https://github.com/rcmdnk/obsidian-evernote-decryptor/blob/master/images/format.gif?raw=true)
 
 These command can be run from the right click context menu in the editor, too.
 
@@ -36,11 +36,11 @@ This formatted text is viewed as a button of `Evernote Secret` in both reading a
 
 By clicking the button, the password input dialog will be shown and the decrypted text will be displayed in a modal.
 
-![button](https://github.com/rcmdnk/cocoro/obsidian-evernote-decryptor/master/images/button.gif?raw=true)
+![button](https://github.com/rcmdnk/obsidian-evernote-decryptor/blob/master/images/button.gif?raw=true)
 
 You can directly edit the encrypted text as a inline-code block, too.
 
-![edit](https://github.com/rcmdnk/cocoro/obsidian-evernote-decryptor/master/images/edit.gif?raw=true)
+![edit](https://github.com/rcmdnk/obsidian-evernote-decryptor/blob/master/images/edit.gif?raw=true)
 
 
 ## Settings
