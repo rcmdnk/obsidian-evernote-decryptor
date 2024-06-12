@@ -1,11 +1,11 @@
 {
 	"id": "evernote-decryptor",
 	"name": "Evernote Decryptor",
-	"version": "1.0.1",
+	"version": "2.0.0",
 	"minAppVersion": "1.0.0",
 	"description": "Obsidian Plugin for encrypted data imported from Evernote.",
 	"author": "rcmdnk",
 	"authorUrl": "https://github.com/rcmdnk",
 	"fundingUrl": "https://github.com/sponsors/rcmdnk",
-	"isDesktopOnly": true
+	"isDesktopOnly": false
 }

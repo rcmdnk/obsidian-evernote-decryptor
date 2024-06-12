@@ -1,9 +1,9 @@
-import { App, Plugin, Menu, Setting, Editor, PluginSettingTab } from 'obsidian';
-import { encryptWrapper, decryptWrapper, showDecryptedText } from './CryptoUtils';
-import { makeViewPlugin  } from './ViewPlugin';
-import { makeSecretButton  } from './SecretButtonWidget';
+import { Plugin, Menu, Editor } from 'obsidian';
+import { SettingTab } from './settings/SettingsTab';
+import { makeViewPlugin, makeSecretButton, showDecryptedText } from './utils/editorUtils';
+import { encryptWrapper, decryptWrapper } from './utils/cryptoUtils';
 
-const PLUGIN_NAME = 'Evernote Decryptor';
+export const PLUGIN_NAME = 'Evernote Decryptor';
 const PREFIX = 'evernote_secret ';
 const BUTTON_TEXT = 'Evernote Secret';
 const BUTTON_CLASS = 'evernote-secret-button';
@@ -140,32 +140,5 @@ export default class EvernoteDecryptorPlugin extends Plugin {
 
   onunload(): void {
     console.log(`${PLUGIN_NAME} unloaded`);
-  }
-}
-
-class SettingTab extends PluginSettingTab {
-  plugin: EvernoteDecryptorPlugin;
-
-  constructor(app: App, plugin: EvernoteDecryptorPlugin) {
-    super(app, plugin);
-    this.plugin = plugin;
-  }
-
-  display(): void {
-    const { containerEl } = this;
-    containerEl.empty();
-
-    containerEl.createEl('h1', { text: `${PLUGIN_NAME} Settings` });
-
-    new Setting(containerEl)
-      .setName('Show Editor Context Menu Item')
-      .setDesc('Toggle the display of the editor context menu item.')
-      .addToggle(toggle => toggle
-        .setValue(this.plugin.settings.showEditorMenu)
-        .onChange(async (value) => {
-          this.plugin.settings.showEditorMenu = value;
-          await this.plugin.saveSettings();
-          this.plugin.updateContextMenu();
-        }));
   }
 }

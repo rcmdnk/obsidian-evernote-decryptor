@@ -1,6 +1,5 @@
-import { App, Notice, Editor } from 'obsidian';
-import { openPasswordModal } from './PasswordModal';
-import { DecryptedTextModal } from './DecryptedTextModal';
+import { App, Notice } from 'obsidian';
+import { openPasswordModal } from '../modals/PasswordModal';
 
 const RESERVED_VALUE = new TextEncoder().encode('ENC0');
 const RESERVED_LENGTH = RESERVED_VALUE.length;
@@ -98,7 +97,7 @@ function concatenateArrays(...arrays: Uint8Array[]): Uint8Array {
   return result;
 }
 
-async function encrypt(text: string, password: string): Promise<string> {
+export async function encrypt(text: string, password: string): Promise<string> {
   const reserved = RESERVED_VALUE;
   const salt = generateRandomBytes(SALT_LENGTH);
   const saltHmac = generateRandomBytes(SALT_HMAC_LENGTH);
@@ -119,7 +118,7 @@ async function encrypt(text: string, password: string): Promise<string> {
   return btoa(String.fromCharCode(...finalData));
 }
 
-async function decrypt(text: string, password: string): Promise<string> {
+export async function decrypt(text: string, password: string): Promise<string> {
   const binaryText = Uint8Array.from(atob(text), c => c.charCodeAt(0));
 
   let offset = RESERVED_LENGTH;
@@ -195,12 +194,5 @@ export async function decryptWrapper(app: App, encryptedText: string): Promise<s
     new Notice('❌ Failed to decrypt.', 10000);
     new Notice(error.message, 10000);
     return null;
-  }
-}
-
-export async function showDecryptedText(app: App, encryptedText: string): Promise<void> {
-  const decryptedText = await decryptWrapper(app, encryptedText);
-  if (decryptedText !== null) {
-    new DecryptedTextModal(app, decryptedText).open();
   }
 }

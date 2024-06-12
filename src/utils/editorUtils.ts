@@ -1,8 +1,39 @@
 import { App, editorLivePreviewField } from 'obsidian';
-import { EditorView, ViewUpdate, Decoration, DecorationSet, ViewPlugin } from '@codemirror/view';
-import { RangeSetBuilder } from '@codemirror/state';
+import { WidgetType, Decoration, DecorationSet, ViewPlugin, EditorView, ViewUpdate } from '@codemirror/view';
+import { SyntaxNodeRef } from '@lezer/common';
 import { syntaxTree } from '@codemirror/language';
-import { SecretButtonWidget } from './SecretButtonWidget';
+import { RangeSetBuilder  } from '@codemirror/state';
+import { decryptWrapper } from './cryptoUtils';
+import { DecryptedTextModal } from '../modals/DecryptedTextModal';
+
+
+export async function showDecryptedText(app: App, encryptedText: string): Promise<void> {
+  const decryptedText = await decryptWrapper(app, encryptedText);
+  if (decryptedText !== null) {
+    new DecryptedTextModal(app, decryptedText).open();
+  }
+}
+
+export function makeSecretButton(app: App, encryptedText: string, buttonText: string, buttonClass: string): HTMLButtonElement {
+  const button = document.createElement('button');
+  button.textContent = buttonText;
+  button.classList.add(buttonClass);
+  button.onclick = (event: MouseEvent) => {
+    event.preventDefault();
+    showDecryptedText(app, encryptedText);
+  };
+  return button;
+}
+
+class SecretButtonWidget extends WidgetType {
+  constructor(public app: App, public encryptedText: string, public buttonText: string, public buttonClass: string) {
+    super();
+  }
+
+  toDOM(_: EditorView): HTMLElement {
+    return makeSecretButton(this.app, this.encryptedText, this.buttonText, this.buttonClass);
+  }
+}
 
 export const makeViewPlugin = (app: App, prefix: string, buttonText: string, buttonClass: string) => ViewPlugin.fromClass(class {
   decorations: DecorationSet;
@@ -31,7 +62,7 @@ export const makeViewPlugin = (app: App, prefix: string, buttonText: string, but
       syntaxTree(view.state).iterate({
         from,
         to,
-        enter(node: Node) {
+        enter(node: SyntaxNodeRef) {
           if (node.type.name.startsWith("inline-code")) {
             const value = view.state.doc.sliceString(node.from, node.to)
             if(value.startsWith(prefix)){
