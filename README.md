@@ -1,6 +1,14 @@
 # Evernote Decryptor Plugin for Obsidian
 
-Manage encrypted data imported from Evernote.
+When you import notes from Evernote by [importer plugin](https://github.com/obsidianmd/obsidian-importer),
+encrypted data in Evernote is imported as a text.
+
+This plugin provides commands to decrypt the encrypted data in the imported notes.
+
+You can format the encrypted data as an Evernote Secret button format,
+which can be decrypted by clicking the button.
+
+It also provides a command to encrypt the selected text as Evernote secret format.
 
 A decryption method is based on the article: [Decoding the Evernote en-crypt field payload](https://soundly.me/decoding-the-Evernote-en-crypt-field-payload/).
 
