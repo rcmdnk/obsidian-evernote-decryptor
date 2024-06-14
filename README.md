@@ -74,7 +74,7 @@ The plugin provides a settings tab under the Obsidian settings menu:
 It is not integrated as a community plugin yet, so you need to install it with
 [BRAT](https://github.com/TfTHacker/obsidian42-brat).
 
-If you've installed the original importer plugin, first uninstall it to avoid conflicts.
+If you've installed the original importer plugin, first disable or uninstall it to avoid conflicts.
 
 After installing BRAT from the community plugin and enabling it,
 add obsidian-importer-for-evernote-decryptor 
