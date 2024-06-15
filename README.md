@@ -5,14 +5,14 @@ encrypted data in Evernote is imported as a text.
 
 This plugin provides commands to decrypt the encrypted data in the imported notes.
 
-You can format the encrypted data as an Evernote Secret button format,
+You can format the encrypted data as an the Evernote Secret button format,
 which can be decrypted by clicking the button.
 
-It also provides a command to encrypt the selected text as Evernote secret format.
+It also provides a command to encrypt the selected text as the Evernote secret format.
 
 If you plan to import notes from Evernote, try
 [obsidian-importer-for-evernote-decryptor](https://github.com/rcmdnk/obsidian-importer-for-evernote-decryptor),
-which is forked version of importer plugin and formats the encrypted data as Evernote secret format directly.
+which is forked version of importer plugin and formats the encrypted data as the Evernote secret format directly.
 About obsidian-importer-for-evernote-decryptor, see below.
 
 This plugin is inspired by the [inline-encrypter](https://github.com/solargate/obsidian-inline-encrypter).
@@ -27,11 +27,11 @@ This plugin is inspired by the [inline-encrypter](https://github.com/solargate/o
 
 Following commands will be added:
 
-- **Decrypt Evernote encrypted data**: Decrypt Evernote the selected encrypted text by entering the password and show the decrypted text.
+- **Decrypt Evernote encrypted data**: Decrypt the selected encrypted text by entering the password and show the decrypted text.
 
 ![decrypt](https://github.com/rcmdnk/obsidian-evernote-decryptor/blob/master/images/decrypt.gif?raw=true)
 
-- **Decrypt Evernote encrypted data and replace**: Decrypt Evernote the selected encrypted text and replace the text with the decrypted text.
+- **Decrypt Evernote encrypted data and replace**: Decrypt the selected encrypted text and replace the text with the decrypted text.
 
 ![replace](https://github.com/rcmdnk/obsidian-evernote-decryptor/blob/master/images/replace.gif?raw=true)
 
@@ -39,9 +39,11 @@ Following commands will be added:
 
 ![encrypt](https://github.com/rcmdnk/obsidian-evernote-decryptor/blob/master/images/encrypt.gif?raw=true)
 
-- **Format Evernote secret**: Format the selected encrypted text as Evernote secret format.
+- **Format Evernote secret**: Format the selected encrypted text as the Evernote secret format.
 
 ![format](https://github.com/rcmdnk/obsidian-evernote-decryptor/blob/master/images/format.gif?raw=true)
+
+- **Format all Evernote secrets in the note**: Format the all encrypted text in the note as the Evernote secret format.
 
 These command can be run from the right click context menu in the editor, too.
 
@@ -66,6 +68,23 @@ You can directly edit the encrypted text as a inline-code block, too.
 The plugin provides a settings tab under the Obsidian settings menu:
 
 - **Show Editor Context Menu Item**: Toggle the display of the editor context menu items.
+
+## About encrypted string of Evernote
+
+Evernote makes the encrypted data with reserved starting value: `ENC0`.
+
+This results in the encrypted data starting with `RU5DM`.
+
+Therefore, you can find the encrypted data by searching `RU5DM` in the note.
+
+If the encrypted data is not starting with `RU5DM`, it could be a old encrypted data with RC2 encryption, which is not supported,
+or it could be corrupted data.
+
+By **Format all Evernote secrets in the note** command,
+all strings starting with `RU5DM` in the note will be formatted as the Evernote secret format.
+
+If the string is in the code block (including inline code block),
+bold, italic, or strikethrough, it will not be formatted.
 
 ## obsidian-importer-for-evernote-decryptor
 
