@@ -1,23 +1,12 @@
 import { App, Notice } from 'obsidian';
+import { RESERVED_VALUE, SALT_LENGTH, SALT_HMAC_LENGTH, IV_LENGTH, BODY_HMAC_LENGTH, PBKDF2_ITERATIONS, KEY_LENGTH, HASH } from '../constants/crypto';
 import { openPasswordModal } from '../modals/PasswordModal';
 
-function fixedPart(reserved: string, encoded: string): string {
+export function reservedPart(reserved: string, encoded: string): string {
 	const n_bits = reserved.length * 8;
 	const n_sixes = Math.floor(n_bits / 6);
 	return encoded.slice(0, n_sixes);
 }
-
-const RESERVED_VALUE = 'ENC0';
-const RESERVED_ENCODED = new TextEncoder().encode(RESERVED_VALUE);
-const RESERVED_LENGTH = RESERVED_VALUE.length;
-export const RESERVED_PART = fixedPart(RESERVED_VALUE, btoa(RESERVED_VALUE));
-const SALT_LENGTH = 16;
-const SALT_HMAC_LENGTH = 16;
-const IV_LENGTH = 16;
-const BODY_HMAC_LENGTH = 32;
-const PBKDF2_ITERATIONS = 50000;
-const KEY_LENGTH = 128 / 8;
-const HASH = 'SHA-256';
 
 function generateRandomBytes(length: number): Uint8Array {
 	const array = new Uint8Array(length);
@@ -106,7 +95,7 @@ function concatenateArrays(...arrays: Uint8Array[]): Uint8Array {
 }
 
 export async function encrypt(text: string, password: string): Promise<string> {
-	const reserved = RESERVED_ENCODED;
+	const reserved = new TextEncoder().encode(RESERVED_VALUE);
 	const salt = generateRandomBytes(SALT_LENGTH);
 	const saltHmac = generateRandomBytes(SALT_HMAC_LENGTH);
 	const iv = generateRandomBytes(IV_LENGTH);
@@ -129,7 +118,7 @@ export async function encrypt(text: string, password: string): Promise<string> {
 export async function decrypt(text: string, password: string): Promise<string> {
 	const binaryText = Uint8Array.from(atob(text), c => c.charCodeAt(0));
 
-	let offset = RESERVED_LENGTH;
+	let offset = RESERVED_VALUE.length;
 	const { data: salt, newOffset: offsetAfterSalt } = extractDataSection(binaryText, offset, SALT_LENGTH);
 	offset = offsetAfterSalt;
 	const { data: saltHmac, newOffset: offsetAfterSaltHmac } = extractDataSection(binaryText, offset, SALT_HMAC_LENGTH);

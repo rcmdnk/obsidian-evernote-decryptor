@@ -1,5 +1,5 @@
 import { App, PluginSettingTab, Setting } from 'obsidian';
-import { PLUGIN_NAME } from '../main';
+import { PLUGIN_NAME } from '../constants/plugin';
 import EvernoteDecryptorPlugin from '../main';
 
 export class SettingTab extends PluginSettingTab {

@@ -1,18 +1,9 @@
 import { Plugin, Menu, Editor } from 'obsidian';
+import { RESERVED_VALUE } from './constants/crypto';
+import { PLUGIN_NAME, FORMAT_PREFIX, BUTTON_TEXT, BUTTON_CLASS, ID_PREFIX, PLACEHOLDER_PREFIX, CMD_DECRYPT, CMD_DECRYPT_REPLACE, CMD_ENCRYPT, CMD_FORMAT, CMD_FORMAT_NOTE } from './constants/plugin';
 import { SettingTab } from './settings/SettingsTab';
 import { makeViewPlugin, makeSecretButton, showDecryptedText } from './utils/editorUtils';
-import { RESERVED_PART, encryptWrapper, decryptWrapper } from './utils/cryptoUtils';
-
-export const PLUGIN_NAME = 'Evernote Decryptor';
-const PREFIX = 'evernote_secret ';
-const BUTTON_TEXT = 'Evernote Secret';
-const BUTTON_CLASS = 'evernote-secret-button';
-const ID_PREFIX = 'evernote-dectyptor-';
-const DECRYPT_NAME = 'Decrypt Evernote encrypted data';
-const DECRYPT_REPLACE_NAME = 'Decrypt Evernote encrypted data and replace';
-const ENCRYPT_NAME = 'Encrypt data as Evernote secret';
-const FORMAT_NAME = 'Format Evernote secret';
-const FORMAT_NOTE_NAME = 'Format all Evernote secrets in the note';
+import { reservedPart, encryptWrapper, decryptWrapper } from './utils/cryptoUtils';
 
 interface Settings {
 	showEditorMenu: boolean;
@@ -25,35 +16,31 @@ const DEFAULT_SETTINGS: Settings = {
 export default class EvernoteDecryptorPlugin extends Plugin {
 	settings: Settings;
 	private contextMenuListener: (menu: Menu, editor: Editor) => void;
+	private encryptedRegexp: RegExp;
+	private codeBlockRegexp: RegExp;
+	private commands: { id: string, name: string, callback: (editor: Editor) => void }[] = [];
 
 	async onload(): Promise<void> {
 		await this.loadSettings();
 		this.addSettingTab(new SettingTab(this.app, this));
 
-		this.addCommand({
-			id: `${ID_PREFIX}decrypt`,
-			name: DECRYPT_NAME,
-			editorCallback: (editor: Editor) => this.editorDecrypt(editor),
-		});
-		this.addCommand({
-			id: `${ID_PREFIX}decrypt-replace`,
-			name: DECRYPT_REPLACE_NAME,
-			editorCallback: (editor: Editor) => this.decryptReplace(editor),
-		});
-		this.addCommand({
-			id: `${ID_PREFIX}encrypt`,
-			name: ENCRYPT_NAME,
-			editorCallback: (editor: Editor) => this.makeSecret(editor),
-		});
-		this.addCommand({
-			id: `${ID_PREFIX}format`,
-			name: FORMAT_NAME,
-			editorCallback: (editor: Editor) => this.formatSecret(editor),
-		});
-		this.addCommand({
-			id: `${ID_PREFIX}format-note`,
-			name: FORMAT_NAME,
-			editorCallback: (editor: Editor) => this.formatNoteSecrets(editor),
+		this.encryptedRegexp = new RegExp(`(?<=^| )${reservedPart(RESERVED_VALUE, btoa(RESERVED_VALUE))}[^ \n\`*_~]*`, 'gm');
+		this.codeBlockRegexp = /```[\s\S]+?```|^ {4,}(?![ *\-+]).*$|`[^\n`]+?`|\*\*[^\n*]+?\*\*|__[^\n_]+?__|~~[^\n~]+?~~|\*[^\n*]+?\*|_[^\n_]+?_/gm;
+
+		this.commands = [
+			{ id: 'decrypt', name: CMD_DECRYPT, callback: (editor: Editor) => this.editorDecrypt(editor) },
+			{ id: 'decrypt-replace', name: CMD_DECRYPT_REPLACE, callback: (editor: Editor) => this.decryptReplace(editor) },
+			{ id: 'encrypt', name: CMD_ENCRYPT, callback: (editor: Editor) => this.makeSecret(editor) },
+			{ id: 'format', name: CMD_FORMAT, callback: (editor: Editor) => this.formatSecret(editor) },
+			{ id: 'format-note', name: CMD_FORMAT_NOTE, callback: (editor: Editor) => this.formatNoteSecrets(editor) }
+		];
+
+		this.commands.forEach(command => {
+			this.addCommand({
+				id: `${ID_PREFIX}${command.id}`,
+				name: command.name,
+				editorCallback: command.callback
+			});
 		});
 
 		this.registerMarkdownPostProcessor((el, _) => {
@@ -61,8 +48,8 @@ export default class EvernoteDecryptorPlugin extends Plugin {
 			codeBlocks.forEach((codeBlock) => {
 				if (codeBlock.parentElement === null) return;
 				if (codeBlock.textContent === null) return;
-				if (codeBlock.textContent.startsWith(PREFIX)) {
-					const encryptedText = codeBlock.textContent.slice(PREFIX.length);
+				if (codeBlock.textContent.startsWith(FORMAT_PREFIX)) {
+					const encryptedText = codeBlock.textContent.slice(FORMAT_PREFIX.length);
 					codeBlock.style.display = 'none';
 
 					const button = makeSecretButton(this.app, encryptedText, BUTTON_TEXT, BUTTON_CLASS);
@@ -71,7 +58,7 @@ export default class EvernoteDecryptorPlugin extends Plugin {
 			});
 		});
 
-		this.registerEditorExtension(makeViewPlugin(this.app, PREFIX, BUTTON_TEXT, BUTTON_CLASS));
+		this.registerEditorExtension(makeViewPlugin(this.app, FORMAT_PREFIX, BUTTON_TEXT, BUTTON_CLASS));
 
 		this.updateContextMenu();
 
@@ -92,25 +79,11 @@ export default class EvernoteDecryptorPlugin extends Plugin {
 		}
 		this.contextMenuListener = (menu: Menu, editor: Editor) => {
 			if (this.settings.showEditorMenu) {
-				menu.addItem(item => {
-					item.setTitle(DECRYPT_NAME)
-						.onClick(() => this.editorDecrypt(editor));
-				});
-				menu.addItem(item => {
-					item.setTitle(DECRYPT_REPLACE_NAME)
-						.onClick(() => this.decryptReplace(editor));
-				});
-				menu.addItem(item => {
-					item.setTitle(ENCRYPT_NAME)
-						.onClick(() => this.makeSecret(editor));
-				});
-				menu.addItem(item => {
-					item.setTitle(FORMAT_NAME)
-						.onClick(() => this.formatSecret(editor));
-				});
-				menu.addItem(item => {
-					item.setTitle(FORMAT_NOTE_NAME)
-						.onClick(() => this.formatNoteSecrets(editor));
+				this.commands.forEach(command => {
+					menu.addItem(item => {
+						item.setTitle(command.name)
+							.onClick(() => command.callback(editor));
+					});
 				});
 			}
 		};
@@ -124,8 +97,8 @@ export default class EvernoteDecryptorPlugin extends Plugin {
 
 	async decryptReplace(editor: Editor): Promise<void> {
 		let selectedText = editor.getSelection().trim().replace(/^`+|`+$/g, '');
-		if (selectedText.startsWith(PREFIX)) {
-			selectedText = selectedText.slice(PREFIX.length);
+		if (selectedText.startsWith(FORMAT_PREFIX)) {
+			selectedText = selectedText.slice(FORMAT_PREFIX.length);
 		}
 		const decryptedText = await decryptWrapper(this.app, selectedText);
 		if (decryptedText !== null) {
@@ -137,31 +110,29 @@ export default class EvernoteDecryptorPlugin extends Plugin {
 		const selectedText = editor.getSelection();
 		const encryptedText = await encryptWrapper(this.app, selectedText);
 		if (encryptedText !== null) {
-			const formattedText = `\`${PREFIX}${encryptedText}\``;
+			const formattedText = `\`${FORMAT_PREFIX}${encryptedText}\``;
 			editor.replaceSelection(formattedText);
 		}
 	}
 
 	formatSecret(editor: Editor): void {
 		const selectedText = editor.getSelection();
-		const formattedText = `\`${PREFIX}${selectedText}\``;
+		const formattedText = `\`${FORMAT_PREFIX}${selectedText}\``;
 		editor.replaceSelection(formattedText);
 	}
 
 	formatNoteSecrets(editor: Editor): void {
 		let doc = editor.getValue();
-		const regex = new RegExp(`(?<=^| )${RESERVED_PART}[^ \n\`*_~]*`, 'gm');
 		const matches: { placeholder: string, content: string }[] = [];
-		const codeBlockRegex = /```[\s\S]+?```|^ {4,}(?![ *\-+]).*$|`[^\n`]+?`|\*\*[^\n*]+?\*\*|__[^\n_]+?__|~~[^\n~]+?~~|\*[^\n*]+?\*|_[^\n_]+?_/gm;
 
-		doc = doc.replace(codeBlockRegex, (match: string) => {
-			const placeholder = `__EVERNOTE_DECRYPTOR_PLACEHOLDER_${matches.length}__`;
+		doc = doc.replace(this.codeBlockRegexp, (match: string) => {
+			const placeholder = `__${PLACEHOLDER_PREFIX}_${matches.length}__`;
 			matches.push({ placeholder, content: match });
 			return placeholder;
 		});
 
-		doc = doc.replace(regex, (match: string) => {
-			return `\`${PREFIX}${match}\``
+		doc = doc.replace(this.encryptedRegexp, (match: string) => {
+			return `\`${FORMAT_PREFIX}${match}\``
 		});
 
 		matches.forEach(({ placeholder, content }) => {
