@@ -10,22 +10,27 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Use Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: "18.x"
+          node-version: "20.x"
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
 
       - name: Build plugin
-        run: |
-          npm install
-          npm run build
+        run: npm run build
 
-      - name: Release
-        uses: softprops/action-gh-release@2
+      - name: Create release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: softprops/action-gh-release@v2
         with:
           files: |
             main.js
             manifest.json
-            style.css
+            styles.css
+          generate_release_notes: true
