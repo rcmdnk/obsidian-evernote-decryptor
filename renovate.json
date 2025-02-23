@@ -1,0 +1,31 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:base"
+  ],
+  "packageRules": [
+    {
+      "matchPackagePatterns": ["^@types/"],
+      "groupName": "type definitions",
+      "automerge": true
+    },
+    {
+      "matchPackagePatterns": ["^@typescript-eslint/"],
+      "groupName": "typescript-eslint",
+      "automerge": true
+    },
+    {
+      "matchPackageNames": ["typescript"],
+      "automerge": false
+    }
+  ],
+  "schedule": ["every weekend"],
+  "labels": ["dependencies"],
+  "assignees": ["rcmdnk"],
+  "reviewers": ["rcmdnk"],
+  "commitMessagePrefix": "chore(deps):",
+  "rangeStrategy": "bump",
+  "dependencyDashboard": true,
+  "prHourlyLimit": 0,
+  "prConcurrentLimit": 0
+} 
