@@ -1,12 +1,15 @@
 {
 	"name": "evernote-decryptor",
-	"version": "2.1.0",
+	"version": "2.2.0",
 	"description": "Obsidian Plugin for encrypted data imported from Evernote.",
 	"main": "main.js",
 	"scripts": {
 		"dev": "node esbuild.config.mjs",
 		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
-		"version": "node version-bump.mjs && git add manifest.json versions.json"
+		"version": "node version-bump.mjs && git add manifest.json versions.json",
+		"prepare": "husky",
+		"pre:commit": "tsc -noEmit -skipLibCheck",
+		"test": "echo \"No tests specified\""
 	},
 	"keywords": [
 		"obsidian",
@@ -20,8 +23,10 @@
 		"@typescript-eslint/eslint-plugin": "5.29.0",
 		"@typescript-eslint/parser": "5.29.0",
 		"builtin-modules": "3.3.0",
-		"esbuild": "0.17.3",
+		"esbuild": "^0.25.0",
+		"husky": "^9.1.7",
 		"obsidian": "latest",
+		"prettier": "^3.5.2",
 		"tslib": "2.4.0",
 		"typescript": "4.7.4"
 	},

@@ -1,4 +1,4 @@
-import { Plugin, Menu, Editor } from 'obsidian';
+import { Plugin, Menu, Editor, Platform, MarkdownView } from 'obsidian';
 import { RESERVED_VALUE } from './constants/crypto';
 import { PLUGIN_NAME, FORMAT_PREFIX, BUTTON_TEXT, BUTTON_CLASS, ID_PREFIX, PLACEHOLDER_PREFIX, CMD_DECRYPT, CMD_DECRYPT_REPLACE, CMD_ENCRYPT, CMD_FORMAT, CMD_FORMAT_NOTE } from './constants/plugin';
 import { SettingTab } from './settings/SettingsTab';
@@ -7,10 +7,12 @@ import { reservedPart, encryptWrapper, decryptWrapper } from './utils/cryptoUtil
 
 interface Settings {
 	showEditorMenu: boolean;
+	showMobileButtons: boolean;
 }
 
 const DEFAULT_SETTINGS: Settings = {
 	showEditorMenu: true,
+	showMobileButtons: true
 };
 
 export default class EvernoteDecryptorPlugin extends Plugin {
@@ -26,6 +28,10 @@ export default class EvernoteDecryptorPlugin extends Plugin {
 
 		this.encryptedRegexp = new RegExp(`(?<=^| )${reservedPart(RESERVED_VALUE, btoa(RESERVED_VALUE))}[^ \n\`*_~]*`, 'gm');
 		this.codeBlockRegexp = /```[\s\S]+?```|^ {4,}(?![ *\-+]).*$|`[^\n`]+?`|\*\*[^\n*]+?\*\*|__[^\n_]+?__|~~[^\n~]+?~~|\*[^\n*]+?\*|_[^\n_]+?_/gm;
+
+		if (Platform.isMobile && this.settings.showMobileButtons) {
+			this.addMobileUI();
+		}
 
 		this.commands = [
 			{ id: 'decrypt', name: CMD_DECRYPT, callback: (editor: Editor) => this.editorDecrypt(editor) },
@@ -140,6 +146,32 @@ export default class EvernoteDecryptorPlugin extends Plugin {
 		});
 
 		editor.setValue(doc);
+	}
+
+	private addMobileUI(): void {
+		const mobileToolbar = this.addStatusBarItem();
+		const encryptButton = mobileToolbar.createEl('button', {
+			text: '🔒',
+			cls: 'mobile-encrypt-button'
+		});
+		const decryptButton = mobileToolbar.createEl('button', {
+			text: '🔓',
+			cls: 'mobile-decrypt-button'
+		});
+
+		encryptButton.addEventListener('click', () => {
+			const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
+			if (activeView && activeView.editor) {
+				this.makeSecret(activeView.editor);
+			}
+		});
+
+		decryptButton.addEventListener('click', () => {
+			const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
+			if (activeView && activeView.editor) {
+				this.editorDecrypt(activeView.editor);
+			}
+		});
 	}
 
 	onunload(): void {

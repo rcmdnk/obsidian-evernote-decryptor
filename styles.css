@@ -1,0 +1,26 @@
+.mobile-encrypt-button,
+.mobile-decrypt-button {
+    padding: 4px 8px;
+    margin: 0 4px;
+    border-radius: 4px;
+    background-color: var(--interactive-accent);
+    color: var(--text-on-accent);
+    cursor: pointer;
+    font-size: 16px;
+    border: none;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.mobile-encrypt-button:active,
+.mobile-decrypt-button:active {
+    transform: translateY(1px);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+@media (max-width: 768px) {
+    .mobile-encrypt-button,
+    .mobile-decrypt-button {
+        padding: 8px 12px;
+        font-size: 18px;
+    }
+}
